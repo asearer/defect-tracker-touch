@@ -4,7 +4,10 @@ import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretdefaultkey';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET must be defined in environment variables');
+}
 
 // Login
 router.post('/login', async (req, res) => {
