@@ -1,0 +1,140 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  defectLogs   DefectLog[]
+  auditLogs    AuditLog[]
+  capaAssigned Capa[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  Operator
+  Quality
+  Supervisor
+  Engineer
+  Admin
+}
+
+model Machine {
+  id            String   @id @default(uuid())
+  name          String
+  location      String?
+  integrationId String?  @unique @map("integration_id")
+  status        String   @default("Active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  defectLogs DefectLog[]
+
+  @@map("machines")
+}
+
+model DefectType {
+  id          String   @id @default(uuid())
+  category    String
+  code        String   @unique
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  defectLogs DefectLog[]
+
+  @@map("defect_types")
+}
+
+model DefectLog {
+  id           String       @id @default(uuid())
+  timestamp    DateTime     @default(now())
+  machineId    String?      @map("machine_id")
+  station      String?
+  operatorId   String?      @map("operator_id")
+  defectTypeId String?      @map("defect_type_id")
+  quantity     Int          @default(1)
+  imageUrl     String?      @map("image_url")
+  status       DefectStatus @default(Open)
+  notes        String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  machine    Machine?    @relation(fields: [machineId], references: [id])
+  operator   User?       @relation(fields: [operatorId], references: [id])
+  defectType DefectType? @relation(fields: [defectTypeId], references: [id])
+  capa       Capa[]
+
+  @@map("defect_logs")
+}
+
+enum DefectStatus {
+  Open
+  UnderReview  @map("Under Review")
+  Contained
+  Closed
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tableName String   @map("table_name")
+  recordId  String   @map("record_id")
+  action    String
+  changedBy String?  @map("changed_by")
+  timestamp DateTime @default(now())
+  oldValues Json?    @map("old_values")
+  newValues Json?    @map("new_values")
+
+  user User? @relation(fields: [changedBy], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Capa {
+  id                String            @id @default(uuid())
+  defectLogId       String?           @map("defect_log_id")
+  rootCauseCategory RootCauseCategory? @map("root_cause_category")
+  why1              String?           @map("why_1")
+  why2              String?           @map("why_2")
+  why3              String?           @map("why_3")
+  why4              String?           @map("why_4")
+  why5              String?           @map("why_5")
+  correctiveAction  String?           @map("corrective_action")
+  assigneeId        String?           @map("assignee_id")
+  dueDate           DateTime?         @map("due_date")
+  status            CapaStatus        @default(Open)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  defectLog DefectLog? @relation(fields: [defectLogId], references: [id])
+  assignee  User?      @relation(fields: [assigneeId], references: [id])
+
+  @@map("capa")
+}
+
+enum RootCauseCategory {
+  Man
+  Machine
+  Method
+  Material
+  Measurement
+  Environment
+}
+
+enum CapaStatus {
+  Open
+  InProgress @map("In Progress")
+  Verified
+  Closed
+}

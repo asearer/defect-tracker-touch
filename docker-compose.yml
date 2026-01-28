@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: defect_tracker_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: defect_tracker
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - defect-net
+
+  server:
+    build: ./server
+    container_name: defect_tracker_server
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/defect_tracker?schema=public
+      - PORT=3000
+    depends_on:
+      - postgres
+    networks:
+      - defect-net
+    command: npm run dev
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  client:
+    build: ./client
+    container_name: defect_tracker_client
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+    depends_on:
+      - server
+    networks:
+      - defect-net
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+
+networks:
+  defect-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
